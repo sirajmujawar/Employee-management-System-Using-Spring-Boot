@@ -1,0 +1,5 @@
+package com.qsp.Employee_management_System.config;
+
+public class CrossConfig {
+
+}

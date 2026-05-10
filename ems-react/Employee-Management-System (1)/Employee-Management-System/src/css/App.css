@@ -1,0 +1,199 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+.nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #0f172a;
+  color: white;
+  padding: 15px 30px;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.nav-items ul {
+  display: flex;
+  gap: 20px;
+  list-style: none;
+}
+
+.nav-items ul li a {
+  color: white;
+  text-decoration: none;
+}
+
+.nav-items ul li a:hover {
+  color: #38bdf8;
+}
+
+/* Container */
+.emp {
+  width: 350px;
+  margin: 40px auto;
+  padding: 25px;
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Heading */
+h1 {
+  text-align: center;
+  margin-top: 20px;
+  color: #0f172a;
+}
+
+/* Form layout */
+.emp form {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Labels */
+.emp label {
+  margin-top: 10px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Inputs & Select */
+.emp input,
+.emp select {
+  margin-top: 5px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  outline: none;
+  font-size: 14px;
+  transition: 0.3s;
+}
+
+/* Focus effect */
+.emp input:focus,
+.emp select:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 5px rgba(56, 189, 248, 0.5);
+}
+
+/* Button */
+.emp button {
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #0f172a;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+/* Button hover */
+.emp button:hover {
+  background-color: #38bdf8;
+}
+
+/* Message */
+.emp p {
+  margin-top: 10px;
+  text-align: center;
+  font-weight: 500;
+  color: green;
+}
+
+/* Responsive */
+@media (max-width: 400px) {
+  .emp {
+    width: 90%;
+  }
+}
+
+/* Page heading */
+h1 {
+  text-align: center;
+  margin: 20px 0;
+  color: #333;
+}
+
+/* Container */
+.table-container {
+  width: 90%;
+  margin: 0 auto;
+  overflow-x: auto;
+}
+
+/* Table styling */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Table header */
+thead {
+  background-color: #4CAF50;
+  color: white;
+}
+
+th {
+  padding: 12px;
+  text-align: left;
+  font-size: 16px;
+}
+
+/* Table rows */
+td {
+  padding: 12px;
+  border-bottom: 1px solid #ddd;
+  font-size: 14px;
+}
+
+/* Zebra effect */
+tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+/* Hover effect */
+tbody tr:hover {
+  background-color: #f1f1f1;
+  transition: 0.3s;
+}
+
+/* Buttons */
+button {
+  padding: 6px 12px;
+  margin-right: 5px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/* Edit button */
+.edit-btn {
+  background-color: #2196F3;
+  color: white;
+}
+
+.edit-btn:hover {
+  background-color: #0b7dda;
+}
+
+/* Delete button */
+.delete-btn {
+  background-color: #f44336;
+  color: white;
+}
+
+.delete-btn:hover {
+  background-color: #d32f2f;
+}
