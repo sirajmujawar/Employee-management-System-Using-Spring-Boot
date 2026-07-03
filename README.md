@@ -1,6 +1,6 @@
 # 🏢 Employee Management System
 
-A full-stack **Employee Management System** built with **Spring Boot** (backend) and **React + Vite** (frontend). This application provides a complete CRUD (Create, Read, Update, Delete) interface for managing employee records, featuring a RESTful API backend with database persistence and a modern single-page application frontend.
+A full-stack **Employee Management System** built with **Spring Boot** (backend) and **React + Vite** (frontend). This application provides a complete CRUD (Create, Read, Update, Delete) interface for managing employee records, featuring a RESTful API backend with database persistence and a modern single-page application frontend. Secured with Spring Security + JWT authentication and role-based access control.
 
 ---
 
@@ -17,6 +17,7 @@ A full-stack **Employee Management System** built with **Spring Boot** (backend)
   - [DAO Layer](#dao-layer)
   - [Service Layer](#service-layer)
   - [Controller Layer](#controller-layer)
+  - [Security Layer](#security-layer)
   - [Exception Handling](#exception-handling)
   - [CORS Configuration](#cors-configuration)
   - [Response Structure](#response-structure)
@@ -44,8 +45,9 @@ The Employee Management System is a web-based application designed to streamline
 - **Update** existing employee information.
 - **Delete** employees by their unique ID.
 - **Search** employees by location using pattern matching.
+- **Register & Login** with JWT-based authentication and role-based access control.
 
-The project follows a **layered architecture** pattern separating concerns across Controller → Service → DAO → Repository layers for clean, maintainable code.
+The project follows a **layered architecture** pattern separating concerns across Controller → Service → DAO → Repository layers for clean, maintainable code. The API is secured with **Spring Security** using stateless **JWT authentication**, **BCrypt** password hashing, and **role-based authorization** (ADMIN / USER).
 
 ---
 
@@ -53,6 +55,9 @@ The project follows a **layered architecture** pattern separating concerns acros
 
 | Feature                   | Description                                                                 |
 | ------------------------- | --------------------------------------------------------------------------- |
+| 🔐 JWT Authentication      | Stateless login with JWT token-based security                              |
+| 👥 Role-Based Access        | ADMIN can delete, USER can read/update only                                |
+| 🔒 BCrypt Encryption        | Passwords hashed before storing in database                                |
 | ➕ Add Employee            | Create a new employee record with full validation                          |
 | 📋 View Records           | Display all employees in a responsive, sortable table                      |
 | ✏️ Update Employee        | Modify employee details by specifying the employee ID                      |
@@ -75,6 +80,8 @@ The project follows a **layered architecture** pattern separating concerns acros
 | ----------------------- | -------- | -------------------------------------------- |
 | Java                    | 17       | Programming language                         |
 | Spring Boot             | 3.2.5    | Application framework                        |
+| Spring Security         | —        | Authentication & Authorization               |
+| JJWT                    | 0.12.5   | JWT token generation and validation          |
 | Spring Data JPA         | —        | ORM and database abstraction                 |
 | Spring Web              | —        | REST API development                         |
 | H2 Database             | —        | In-memory database (active profile)          |
@@ -109,17 +116,24 @@ The project follows a **multi-tier layered architecture**:
 │  │          │ │ Employee │ │ Employee │ │ Employee │ │ Employee │  │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘  │
 └────────────────────────────┬─────────────────────────────────────────┘
-                             │  HTTP (REST API)
+                             │  HTTP (REST API + Bearer Token)
                              ▼
 ┌──────────────────────────────────────────────────────────────────────┐
 │                      BACKEND (Spring Boot)                           │
 │                       http://localhost:8080                           │
 │                                                                      │
 │  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │  Controller Layer  (EmployeeController.java)                    │ │
-│  │  - Handles HTTP requests (GET, POST, PUT, DELETE)               │ │
-│  │  - Maps endpoints to service methods                            │ │
-│  │  - Returns ResponseEntity with ResponseStructure                │ │
+│  │  Security Filter Chain  (JwtAuthFilter.java)                    │ │
+│  │  - Intercepts every request, extracts JWT from Authorization    │ │
+│  │  - Validates token and sets SecurityContext                     │ │
+│  │  - Public routes: /api/auth/**, /swagger-ui/**, /h2-console/** │ │
+│  └─────────────────────────┬───────────────────────────────────────┘ │
+│                             │                                        │
+│  ┌─────────────────────────▼───────────────────────────────────────┐ │
+│  │  Controller Layer                                               │ │
+│  │  - AuthController.java      → /api/auth/register, /api/auth/login│
+│  │  - EmployeeController.java  → /employees CRUD endpoints        │ │
+│  │  - DELETE /employees/** restricted to ROLE_ADMIN                │ │
 │  └─────────────────────────┬───────────────────────────────────────┘ │
 │                             │                                        │
 │  ┌─────────────────────────▼───────────────────────────────────────┐ │
@@ -137,9 +151,9 @@ The project follows a **multi-tier layered architecture**:
 │  └─────────────────────────┬───────────────────────────────────────┘ │
 │                             │                                        │
 │  ┌─────────────────────────▼───────────────────────────────────────┐ │
-│  │  Repository Layer  (EmployeeRepository.java)                    │ │
-│  │  - Extends JpaRepository<Employee, Integer>                     │ │
-│  │  - Custom query: findByLocationContainingIgnoringCase()         │ │
+│  │  Repository Layer                                               │ │
+│  │  - EmployeeRepository  → JpaRepository<Employee, Integer>       │ │
+│  │  - UserRepository      → JpaRepository<User, Long>              │ │
 │  └─────────────────────────┬───────────────────────────────────────┘ │
 │                             │                                        │
 └─────────────────────────────┼────────────────────────────────────────┘
@@ -148,6 +162,8 @@ The project follows a **multi-tier layered architecture**:
                   ┌───────────────────────┐
                   │   H2 Database          │
                   │   (In-Memory)          │
+                  │   Tables: employee,    │
+                  │   app_users             │
                   │   jdbc:h2:mem:testdb   │
                   └───────────────────────┘
 ```
@@ -169,18 +185,31 @@ Employee-mangement-spring-boot-project/
 │       │   │   ├── config/
 │       │   │   │   └── CrossConfig.java                       # CORS configuration
 │       │   │   ├── controller/
+│       │   │   │   ├── AuthController.java                    # Register & Login endpoints
 │       │   │   │   └── EmployeeController.java                # REST API endpoints
 │       │   │   ├── dao/
 │       │   │   │   └── EmployeeDao.java                       # Data access object
+│       │   │   ├── dto/
+│       │   │   │   ├── AuthResponse.java                      # JWT token response DTO
+│       │   │   │   ├── LoginRequest.java                      # Login request DTO
+│       │   │   │   └── RegisterRequest.java                   # Registration request DTO
 │       │   │   ├── entitylayer/
-│       │   │   │   └── Employee.java                          # JPA entity model
+│       │   │   │   ├── Employee.java                          # JPA entity model
+│       │   │   │   ├── Role.java                              # Role enum (ADMIN, USER)
+│       │   │   │   └── User.java                              # User entity (app_users)
 │       │   │   ├── exception/
 │       │   │   │   ├── GlobalExceptionHandler.java            # Global error handler
 │       │   │   │   └── IdValidationException.java             # Custom exception
 │       │   │   ├── repository/
-│       │   │   │   └── EmployeeRepository.java                # JPA repository
+│       │   │   │   ├── EmployeeRepository.java                # JPA repository
+│       │   │   │   └── UserRepository.java                    # User JPA repository
 │       │   │   ├── responsestructure/
 │       │   │   │   └── ResponseStructure.java                 # Generic API response
+│       │   │   ├── security/
+│       │   │   │   ├── CustomUserDetailsService.java           # Loads user from DB
+│       │   │   │   ├── JwtAuthFilter.java                     # JWT request filter
+│       │   │   │   ├── JwtUtil.java                           # JWT token utility
+│       │   │   │   └── SecurityConfig.java                    # Spring Security config
 │       │   │   └── service/
 │       │   │       └── EmployeeService.java                   # Business logic
 │       │   └── resources/
@@ -231,6 +260,28 @@ Key annotations used:
 - `@Id` + `@GeneratedValue` — Auto-generates the primary key using a sequence (`my_seq`) starting at `1234` with an allocation size of `1`.
 - `@CreationTimestamp` / `@UpdateTimestamp` — Hibernate annotations that automatically track creation and modification times.
 
+**File:** `User.java`
+
+The `User` entity represents the `app_users` table used for authentication:
+
+| Field       | Type     | Description                                        |
+| ----------- | -------- | -------------------------------------------------- |
+| `id`        | `Long`   | Primary key (auto-generated via `IDENTITY`)        |
+| `username`  | `String` | Unique, non-null username for login                |
+| `password`  | `String` | BCrypt-hashed password                             |
+| `role`      | `Role`   | Enum value — `ADMIN` or `USER` (stored as STRING)  |
+
+**File:** `Role.java`
+
+A simple enum defining the two application roles:
+
+```java
+public enum Role {
+    ADMIN,
+    USER
+}
+```
+
 ---
 
 ### Repository Layer
@@ -245,6 +296,15 @@ Extends `JpaRepository<Employee, Integer>`, which provides built-in methods such
 List<Employee> findByLocationContainingIgnoringCase(String address);
 ```
 This uses Spring Data JPA's **derived query method** naming convention to search employees whose location contains the given substring (case-insensitive).
+
+**File:** `UserRepository.java`
+
+Extends `JpaRepository<User, Long>` and provides a custom finder for authentication:
+
+```java
+Optional<User> findByUsername(String username);
+```
+Used by `CustomUserDetailsService` to load user details during JWT validation.
 
 ---
 
@@ -282,7 +342,80 @@ The service layer contains **business logic** and **validations**:
 
 **File:** `EmployeeController.java`
 
-The REST controller exposes the following API endpoints (see [API Endpoints](#api-endpoints) for full details). Every response is wrapped in a generic `ResponseStructure<T>` object for consistent API responses.
+The REST controller exposes the employee CRUD API endpoints (see [API Endpoints](#api-endpoints) for full details). Every response is wrapped in a generic `ResponseStructure<T>` object for consistent API responses. All endpoints require a valid JWT token in the `Authorization` header.
+
+**File:** `AuthController.java`
+
+Handles user registration and login. Mapped to `/api/auth/**` (publicly accessible — no JWT required):
+
+| Method | Endpoint              | Description                                                       |
+| ------ | --------------------- | ----------------------------------------------------------------- |
+| `POST` | `/api/auth/register`  | Registers a new user (username, password, optional role). Password is BCrypt-hashed before saving. Defaults to `USER` role if not specified. |
+| `POST` | `/api/auth/login`     | Authenticates user credentials and returns a signed JWT token.    |
+
+---
+
+### Security Layer
+
+The `security/` package implements **stateless JWT-based authentication** with **role-based access control**.
+
+#### Security Configuration
+
+**File:** `SecurityConfig.java`
+
+Configures the Spring Security filter chain:
+
+| Setting                     | Value                                                    |
+| --------------------------- | -------------------------------------------------------- |
+| CSRF                        | Disabled (stateless REST API)                            |
+| Session Management          | `STATELESS` — no HTTP sessions are created               |
+| Public Endpoints            | `/api/auth/**`, `/swagger-ui/**`, `/v3/api-docs/**`, `/h2-console/**` |
+| DELETE `/employees/**`      | Restricted to `ROLE_ADMIN` only                          |
+| All Other Endpoints         | Require authentication (any role)                        |
+| Password Encoder            | `BCryptPasswordEncoder`                                  |
+| Authentication Provider     | `DaoAuthenticationProvider` with `CustomUserDetailsService` |
+| JWT Filter                  | `JwtAuthFilter` added before `UsernamePasswordAuthenticationFilter` |
+
+#### JWT Utility
+
+**File:** `JwtUtil.java`
+
+Handles all JWT token operations using the JJWT library:
+
+| Method                            | Description                                       |
+| --------------------------------- | ------------------------------------------------- |
+| `generateToken(username, role)`   | Creates a signed JWT with 10-hour expiry          |
+| `extractUsername(token)`          | Extracts the subject (username) from the token    |
+| `extractRole(token)`              | Extracts the custom `role` claim                  |
+| `isTokenValid(token, username)`   | Validates token signature, subject, and expiry    |
+
+Token details:
+- **Algorithm:** HMAC-SHA (256-bit secret key)
+- **Expiry:** 10 hours from issuance
+- **Claims:** `sub` (username), `role` (ADMIN/USER), `iat`, `exp`
+
+#### JWT Authentication Filter
+
+**File:** `JwtAuthFilter.java`
+
+A `OncePerRequestFilter` that intercepts every incoming request:
+
+1. Extracts the `Authorization: Bearer <token>` header.
+2. Parses the JWT and extracts the username.
+3. Loads the `UserDetails` from the database via `CustomUserDetailsService`.
+4. Validates the token (signature + expiry + username match).
+5. Sets the `SecurityContext` with the authenticated user and their granted authorities.
+6. If no valid token is present, the request continues unauthenticated (Spring Security will reject it if the endpoint requires auth).
+
+#### Custom UserDetailsService
+
+**File:** `CustomUserDetailsService.java`
+
+Implements Spring Security's `UserDetailsService` interface:
+
+- Loads a `User` entity from `UserRepository` by username.
+- Maps the `Role` enum to a `SimpleGrantedAuthority` with `ROLE_` prefix (e.g., `ROLE_ADMIN`).
+- Throws `UsernameNotFoundException` if the user doesn't exist.
 
 ---
 
@@ -384,19 +517,58 @@ The application uses **vanilla CSS** (`src/css/App.css`) with:
 
 ## API Endpoints
 
-### Employee CRUD Operations
+### Authentication Endpoints (Public — No JWT Required)
 
-| Method   | Endpoint                         | Description                                  | Request Body        | Response                              |
-| -------- | -------------------------------- | -------------------------------------------- | ------------------- | ------------------------------------- |
-| `POST`   | `/employees`                     | Create a new employee                        | `Employee` JSON     | `201 Created` — `ResponseStructure<Employee>` |
-| `GET`    | `/employees/{empid}`             | Get employee by ID                           | —                   | `200 OK` or `404 Not Found`          |
-| `PUT`    | `/employees`                     | Update an existing employee                  | `Employee` JSON     | `201 Created` — `ResponseStructure<Employee>` |
-| `DELETE` | `/employees/{empid}`             | Delete employee by ID                        | —                   | `200 OK` or `404 Not Found`          |
-| `POST`   | `/employees/all`                 | Bulk create multiple employees               | `List<Employee>` JSON | `201 Created` — `ResponseStructure<List<Employee>>` |
-| `GET`    | `/employees?page=0&size=10`      | Get paginated & sorted employees             | —                   | `Page<Employee>`                     |
-| `GET`    | `/employees/location/{location}` | Search employees by location (case-insensitive) | —               | `List<Employee>`                     |
+| Method   | Endpoint              | Description                                  | Request Body             | Response                              |
+| -------- | --------------------- | -------------------------------------------- | ------------------------ | ------------------------------------- |
+| `POST`   | `/api/auth/register`  | Register a new user                          | `RegisterRequest` JSON   | `200 OK` — "User registered successfully" |
+| `POST`   | `/api/auth/login`     | Login and receive JWT token                  | `LoginRequest` JSON      | `200 OK` — `AuthResponse` with token  |
 
-### Sample Request Body
+### Employee CRUD Operations (JWT Required)
+
+> **Note:** All employee endpoints require a valid JWT token in the `Authorization` header:
+> ```
+> Authorization: Bearer <your-jwt-token>
+> ```
+> The `DELETE` endpoint is restricted to users with **ROLE_ADMIN** only.
+
+| Method   | Endpoint                         | Description                                  | Request Body        | Auth Required | Response                              |
+| -------- | -------------------------------- | -------------------------------------------- | ------------------- | ------------- | ------------------------------------- |
+| `POST`   | `/employees`                     | Create a new employee                        | `Employee` JSON     | ✅ Any role   | `201 Created` — `ResponseStructure<Employee>` |
+| `GET`    | `/employees/{empid}`             | Get employee by ID                           | —                   | ✅ Any role   | `200 OK` or `404 Not Found`          |
+| `PUT`    | `/employees`                     | Update an existing employee                  | `Employee` JSON     | ✅ Any role   | `201 Created` — `ResponseStructure<Employee>` |
+| `DELETE` | `/employees/{empid}`             | Delete employee by ID                        | —                   | ✅ ADMIN only | `200 OK` or `404 Not Found`          |
+| `POST`   | `/employees/all`                 | Bulk create multiple employees               | `List<Employee>` JSON | ✅ Any role | `201 Created` — `ResponseStructure<List<Employee>>` |
+| `GET`    | `/employees?page=0&size=10`      | Get paginated & sorted employees             | —                   | ✅ Any role   | `Page<Employee>`                     |
+| `GET`    | `/employees/location/{location}` | Search employees by location (case-insensitive) | —               | ✅ Any role   | `List<Employee>`                     |
+
+### Sample Auth Request Bodies
+
+**Register:**
+```json
+{
+  "username": "admin1",
+  "password": "admin123",
+  "role": "ADMIN"
+}
+```
+
+**Login:**
+```json
+{
+  "username": "admin1",
+  "password": "admin123"
+}
+```
+
+**Login Response:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbjEiLCJyb2xlIjoiQURNSU4iLCJpYXQiOi..."
+}
+```
+
+### Sample Employee Request Body
 
 ```json
 {
@@ -408,7 +580,7 @@ The application uses **vanilla CSS** (`src/css/App.css`) with:
 }
 ```
 
-### Sample Response
+### Sample Employee Response
 
 ```json
 {
@@ -558,6 +730,8 @@ After running both the backend and frontend servers:
 ## 🛠️ Built With
 
 - **Spring Boot** — Backend REST API framework
+- **Spring Security** — Authentication & authorization framework
+- **JJWT** — JWT token generation and validation
 - **React** — Frontend UI library
 - **Vite** — Lightning-fast frontend build tool
 - **Spring Data JPA** — Database ORM layer
